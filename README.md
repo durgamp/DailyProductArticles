@@ -91,7 +91,10 @@ Required GitHub secrets: `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`, `SOURCE_SENDER_E
 The `portal/` directory contains a Next.js app that displays digests in a browser.
 
 - Backed by **Upstash Redis** for storage.
-- Deploy to Vercel; configure `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and `PORTAL_API_SECRET` as Vercel environment variables (see `portal/.env.example`).
+- Deploy to Vercel; set the following environment variables in Vercel (see `portal/.env.example`):
+  - `PORTAL_API_SECRET` — shared secret matching the Python script
+  - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (direct Upstash), **or**
+  - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (Vercel KV integration) — both are supported
 - The Python script POSTs structured digest JSON to `PORTAL_API_URL/api/publish` after each digest run.
 - Digest pages are available at `/digest/YYYY-MM-DD`.
 
