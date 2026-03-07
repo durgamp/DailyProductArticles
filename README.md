@@ -8,7 +8,7 @@ This automation checks your Gmail for emails from selected sender IDs, summarize
 - Monitors multiple sender email IDs.
 - At a fixed interval (default every `4` hours in `Asia/Kolkata`), it:
   - Fetches emails from the most recent interval window.
-  - Summarizes each sender’s emails via CLaude
+  - Summarizes each sender’s emails via Claude
   - Sends a single digest email with separate sender sections.
 - Tracks processed message IDs and last run timestamp in `processed_state.json`.
 
