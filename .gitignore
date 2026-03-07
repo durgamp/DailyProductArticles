@@ -1,0 +1,24 @@
+# Environment secrets - never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# State file (runtime data)
+processed_state.json
+
+# Node / Next.js
+portal/node_modules/
+portal/.next/
+portal/.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
