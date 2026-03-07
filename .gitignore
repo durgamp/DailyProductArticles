@@ -14,6 +14,9 @@ build/
 # State file (runtime data)
 processed_state.json
 
+# Logs
+logs/
+
 # Node / Next.js
 portal/node_modules/
 portal/.next/
