@@ -1,4 +1,4 @@
-# Daily Gmail Newsletter Summarizer (Ollama)
+# Daily Gmail Newsletter Summarizer
 
 This automation checks your Gmail for emails from selected sender IDs, summarizes them with a local Ollama model, and sends one combined daily digest email.
 
@@ -8,7 +8,7 @@ This automation checks your Gmail for emails from selected sender IDs, summarize
 - Monitors multiple sender email IDs.
 - At a fixed interval (default every `4` hours in `Asia/Kolkata`), it:
   - Fetches emails from the most recent interval window.
-  - Summarizes each sender’s emails via Ollama.
+  - Summarizes each sender’s emails via CLaude
   - Sends a single digest email with separate sender sections.
 - Tracks processed message IDs and last run timestamp in `processed_state.json`.
 
@@ -17,7 +17,7 @@ This automation checks your Gmail for emails from selected sender IDs, summarize
 - `main.py` - scheduler/service loop and run modes
 - `config.py` - `.env` loading + validation
 - `email_watcher.py` - Gmail IMAP fetch + body extraction
-- `summarizer.py` - Ollama summarization + digest assembly
+- `summarizer.py` - Summarization + digest assembly
 - `sender.py` - Gmail SMTP send
 - `state_store.py` - local state persistence
 
