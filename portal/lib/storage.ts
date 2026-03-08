@@ -10,6 +10,9 @@ function getRedis(): Redis | null {
 
 export interface Article {
   sender: string;
+  subject?: string;
+  title?: string;
+  summary?: string;
   email_count: number;
   categories: string[];
   key_points: string[];

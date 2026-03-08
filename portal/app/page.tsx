@@ -115,31 +115,37 @@ export default async function HomePage() {
 
                 {/* Article cards */}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {digest.articles.map((article) => (
+                  {digest.articles.map((article, i) => (
                     <Link
-                      key={article.sender}
+                      key={i}
                       href={`/digest/${digest.date}`}
                       className="block bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-400 hover:shadow-sm transition-all"
                     >
-                      <p className="text-sm font-semibold text-gray-800 truncate mb-1">
-                        {article.sender}
+                      <p className="text-xs text-gray-400 truncate mb-1">{article.sender}</p>
+                      {article.categories && article.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-1.5">
+                          {article.categories.slice(0, 2).map((c) => (
+                            <span key={c} className="text-xs bg-indigo-50 text-indigo-600 rounded-full px-2 py-0.5 font-medium">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-sm font-bold text-gray-900 leading-snug mb-2 line-clamp-2">
+                        {article.title || article.sender}
                       </p>
-                      <p className="text-xs text-gray-400 mb-2">
-                        {article.email_count} email{article.email_count !== 1 ? "s" : ""}
-                      </p>
-                      {article.key_points.length > 0 && (
+                      {article.summary ? (
+                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                          {article.summary}
+                        </p>
+                      ) : article.key_points.length > 0 && (
                         <ul className="text-xs text-gray-600 space-y-1">
-                          {article.key_points.slice(0, 2).map((pt, i) => (
-                            <li key={i} className="flex gap-1.5 line-clamp-2">
+                          {article.key_points.slice(0, 2).map((pt, j) => (
+                            <li key={j} className="flex gap-1.5 line-clamp-1">
                               <span className="text-indigo-400 shrink-0">&#x2022;</span>
                               <span>{pt}</span>
                             </li>
                           ))}
-                          {article.key_points.length > 2 && (
-                            <li className="text-indigo-500 font-medium">
-                              +{article.key_points.length - 2} more
-                            </li>
-                          )}
                         </ul>
                       )}
                     </Link>
