@@ -28,6 +28,7 @@ class EmailItem:
     sent_at: datetime
     body: str
     image_urls: List[str] = field(default_factory=list)
+    link_urls: List[str] = field(default_factory=list)
 
 
 def _decode_mime_header(value: str | None) -> str:
@@ -86,6 +87,54 @@ def _extract_body(msg: Message) -> str:
 
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _extract_links(msg: Message) -> List[str]:
+    """Extract article hyperlink URLs from email HTML (skips social/unsubscribe/tracking)."""
+    html_parts: List[str] = []
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() == "text/html":
+                payload = part.get_payload(decode=True)
+                if payload:
+                    charset = part.get_content_charset() or "utf-8"
+                    html_parts.append(payload.decode(charset, errors="replace"))
+    else:
+        if msg.get_content_type() == "text/html":
+            payload = msg.get_payload(decode=True)
+            if payload:
+                charset = msg.get_content_charset() or "utf-8"
+                html_parts.append(payload.decode(charset, errors="replace"))
+
+    if not html_parts:
+        return []
+
+    soup = BeautifulSoup("\n".join(html_parts), "html.parser")
+    seen: set = set()
+    urls: List[str] = []
+    _skip = [
+        "unsubscribe", "optout", "opt-out", "manage_preference",
+        "twitter.com", "x.com", "facebook.com", "instagram.com",
+        "linkedin.com", "youtube.com", "tiktok.com", "reddit.com",
+        "mailto:", "tel:", "/track/", "/open/", "/click/", "pixel.",
+    ]
+    for a in soup.find_all("a", href=True):
+        href = (a.get("href") or "").strip()
+        if not href.startswith("http"):
+            continue
+        lower = href.lower()
+        if any(p in lower for p in _skip):
+            continue
+        # Prefer links with meaningful anchor text (not icon/button-only links)
+        anchor_text = a.get_text(strip=True)
+        if len(anchor_text) < 4:
+            continue
+        if href not in seen:
+            seen.add(href)
+            urls.append(href)
+        if len(urls) >= 15:
+            break
+    return urls
 
 
 def _extract_images(msg: Message) -> List[str]:
@@ -213,6 +262,7 @@ def fetch_emails_for_date(
                     sent_at=sent_at,
                     body=_extract_body(msg),
                     image_urls=_extract_images(msg),
+                    link_urls=_extract_links(msg),
                 )
                 result[sender].append(item)
 

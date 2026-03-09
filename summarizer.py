@@ -9,6 +9,7 @@ import anthropic
 from pydantic import BaseModel
 
 from config import AppConfig
+from content_fetcher import fetch_linked_content
 from email_watcher import EmailItem
 
 
@@ -47,32 +48,64 @@ def _fallback(item: EmailItem) -> ArticleSummary:
     )
 
 
+def _build_content_block(item: EmailItem) -> str:
+    """Assemble email body + fetched linked article text into one content block."""
+    parts: List[str] = []
+
+    # 1. Full email body (up to 10 000 chars)
+    body = _truncate(item.body, 10000)
+    if body:
+        parts.append(f"=== EMAIL BODY ===\n{body}")
+
+    # 2. Fetch and append full text from linked articles
+    if item.link_urls:
+        logger.info("Fetching linked content for '%s' (%d links)", item.subject, len(item.link_urls))
+        linked = fetch_linked_content(item.link_urls, max_articles=5)
+        for url, text in linked:
+            if text:
+                parts.append(f"=== LINKED ARTICLE: {url} ===\n{_truncate(text, 5000)}")
+        if linked:
+            logger.info("Fetched %d linked article(s) for '%s'", len(linked), item.subject)
+
+    return "\n\n".join(parts)
+
+
 def summarize_single_email(config: AppConfig, sender: str, item: EmailItem) -> ArticleSummary:
     try:
+        content_block = _build_content_block(item)
+        if not content_block.strip():
+            return _fallback(item)
+
         client = anthropic.Anthropic(api_key=config.anthropic_api_key)
         response = client.messages.parse(
             model="claude-opus-4-6",
-            max_tokens=1500,
+            max_tokens=2000,
             system=(
-                "You are a newsletter editor creating a daily digest. "
-                "Read the full email body thoroughly and produce detailed, specific summaries. "
-                "Include concrete facts, numbers, names, and insights — not vague generalities."
+                "You are a senior newsletter editor producing a daily digest. "
+                "You are given the full email body AND the full text of every article "
+                "linked inside that email. Read ALL provided content exhaustively before writing. "
+                "Your summaries must be deeply informed — cite specific facts, numbers, names, "
+                "examples, and insights from the actual content. Never be vague or superficial."
             ),
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Summarize this newsletter email into a standalone article.\n\n"
-                    f"Source: {sender}\n"
+                    f"Source newsletter: {sender}\n"
                     f"Subject: {item.subject}\n"
                     f"Sent: {item.sent_at.isoformat()}\n\n"
-                    f"Full email body:\n{_truncate(item.body)}\n\n"
+                    f"FULL CONTENT (email body + all linked articles):\n\n"
+                    f"{content_block}\n\n"
+                    f"---\n"
+                    f"Now produce a richly detailed article summary covering ALL content above.\n\n"
                     f"Return:\n"
-                    f"- title: A crisp, specific headline (max 12 words, based on actual content)\n"
-                    f"- summary: A detailed prose summary of 200-300 words. Cover the main story, "
-                    f"key insights, data points, examples, and any recommendations. Write as a "
-                    f"journalist — specific, informative, no filler.\n"
-                    f"- key_points: 4-6 specific bullet points with concrete details (numbers, names, facts)\n"
-                    f"- action_items: specific actions the reader should take (empty list if none)\n"
+                    f"- title: A sharp, specific headline (max 12 words)\n"
+                    f"- summary: 250-350 word prose summary. Cover every major point, insight, "
+                    f"data point, example, and recommendation found across the email AND linked "
+                    f"articles. Write like a journalist — concrete, specific, no filler. "
+                    f"Integrate content from linked articles naturally into the narrative.\n"
+                    f"- key_points: 5-8 crisp bullets each with a specific fact, number, or "
+                    f"takeaway (not vague — e.g. 'GPT-4 costs $30/M tokens' not 'AI costs are rising')\n"
+                    f"- action_items: concrete steps the reader should take (empty list if none)\n"
                     f"- dates_deadlines: any dates, deadlines, or time-sensitive info (empty list if none)\n"
                     f"- categories: 1-3 topic tags (e.g. 'AI', 'System Design', 'Finance', 'Productivity')"
                 ),
