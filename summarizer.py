@@ -128,6 +128,8 @@ def build_digest(
             "subject": item.subject,
             "title": art.title,
             "summary": art.summary,
+            "image_url": item.image_urls[0] if item.image_urls else None,
+            "image_urls": item.image_urls,
             "email_count": 1,
             "categories": art.categories,
             "key_points": art.key_points,

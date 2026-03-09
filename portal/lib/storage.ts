@@ -13,6 +13,8 @@ export interface Article {
   subject?: string;
   title?: string;
   summary?: string;
+  image_url?: string;
+  image_urls?: string[];
   email_count: number;
   categories: string[];
   key_points: string[];

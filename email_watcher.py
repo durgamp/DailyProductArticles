@@ -3,7 +3,7 @@ from __future__ import annotations
 import imaplib
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from email import message_from_bytes
 from email.header import decode_header
@@ -27,6 +27,7 @@ class EmailItem:
     subject: str
     sent_at: datetime
     body: str
+    image_urls: List[str] = field(default_factory=list)
 
 
 def _decode_mime_header(value: str | None) -> str:
@@ -85,6 +86,49 @@ def _extract_body(msg: Message) -> str:
 
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def _extract_images(msg: Message) -> List[str]:
+    """Extract meaningful image URLs from email HTML parts (skips tracking pixels)."""
+    html_parts: List[str] = []
+
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.get_content_type() == "text/html":
+                payload = part.get_payload(decode=True)
+                if payload:
+                    charset = part.get_content_charset() or "utf-8"
+                    html_parts.append(payload.decode(charset, errors="replace"))
+    else:
+        if msg.get_content_type() == "text/html":
+            payload = msg.get_payload(decode=True)
+            if payload:
+                charset = msg.get_content_charset() or "utf-8"
+                html_parts.append(payload.decode(charset, errors="replace"))
+
+    if not html_parts:
+        return []
+
+    soup = BeautifulSoup("\n".join(html_parts), "html.parser")
+    urls: List[str] = []
+    for img in soup.find_all("img", src=True):
+        src = (img.get("src") or "").strip()
+        if not src.startswith("http"):
+            continue
+        lower = src.lower()
+        if any(x in lower for x in ("tracking", "pixel", "spacer", "beacon", "open.php", "click.")):
+            continue
+        if src.endswith((".gif", ".ico")):
+            continue
+        w = str(img.get("width", ""))
+        h = str(img.get("height", ""))
+        if w in ("1", "2", "3") or h in ("1", "2", "3"):
+            continue
+        urls.append(src)
+        if len(urls) >= 6:
+            break
+
+    return urls
 
 
 def _message_id(msg: Message, fallback: str) -> str:
@@ -168,6 +212,7 @@ def fetch_emails_for_date(
                     subject=_decode_mime_header(msg.get("Subject")),
                     sent_at=sent_at,
                     body=_extract_body(msg),
+                    image_urls=_extract_images(msg),
                 )
                 result[sender].append(item)
 
